@@ -102,7 +102,7 @@ class PA:
     def compute_wall_force(self, xh):
         """Computes the force pushing xh away from the closest wall."""
         force = np.array([0.0, 0.0])  # Initialize force
-        threshold = 30  # Maximum distance for the force to be active
+        threshold = 70  # Maximum distance for the force to be active
         max_force = 10  # Maximum force strength
 
         for wall in self.walls:
@@ -117,7 +117,7 @@ class PA:
 
                 # Force strength decreases with distance
                 force_magnitude = max_force * (1 - distance / threshold)  
-                force += force_magnitude * normalized_dir  
+                force -= force_magnitude * normalized_dir  
 
         return force
     
@@ -137,7 +137,7 @@ class PA:
     def draw_walls(self):
         """Draws all walls in the Pygame window."""
         wall_color = (255, 255, 255)  # White walls
-        wall_thickness = 5  # Adjust thickness
+        wall_thickness = 20  # Adjust thickness
 
         for wall in self.walls:
             p1, p2 = wall  # Unpack start and end points
