@@ -192,8 +192,8 @@ class Graphics:
         self.stick_angle += delta_angle
 
     '''Dummy fucntion for wall collision'''
-    def check_wall_collision(self, f):
-        if np.linalg.norm(f) > 5.0:
+    def check_wall_collision(self, wall_force):
+        if np.linalg.norm(wall_force) > 3.0:
             self.wall_collision = True
         else:
             self.wall_collision = False
@@ -295,7 +295,7 @@ class Graphics:
 
 
     
-    def render(self, pA0, pB0, pA, pB, pE, f, pM):
+    def render(self, pA0, pB0, pA, pB, pE, f, pM, wall_force):
         self.haptic.center = pE
         
         """ Changes for PA3 """
@@ -306,7 +306,7 @@ class Graphics:
             
             
             '''Check for collision and reduce score for colliding'''
-            self.check_wall_collision(f)
+            self.check_wall_collision(wall_force)
             if self.wall_collision:
                 self.blood_alpha = 255
                 current_time = time.time()

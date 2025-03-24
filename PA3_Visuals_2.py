@@ -211,7 +211,7 @@ class PA:
 
         
         # Total force
-        fe = f_breath + self.twitch_force + wall_force
+        fe = f_breath + self.twitch_force# + wall_force
         """End of disturbance forces code"""
 
         
@@ -240,7 +240,7 @@ class PA:
             pos_phys = g.inv_convert_pos(xh)
             pA0,pB0,pA,pB,pE = p.derive_device_pos(pos_phys) #derive the pantograph joint positions given some endpoint position
             pA0,pB0,pA,pB,xh = g.convert_pos(pA0,pB0,pA,pB,pE) #convert the physical positions to screen coordinates
-        g.render(pA0,pB0,pA,pB,xh,fe,xm)
+        g.render(pA0,pB0,pA,pB,xh,fe,xm,wall_force)
         
     def close(self):
         ##############################################
