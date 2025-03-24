@@ -32,7 +32,7 @@ class PA:
     def __init__(self):
         self.physics = Physics(hardware_version=2) #setup physics class. Returns a boolean indicating if a device is connected
         self.device_connected = self.physics.is_device_connected() #returns True if a connected haply device was found
-        self.graphics = Graphics(self.device_connected, window_size=(1500, 1000)) #setup class for drawing and graphics.
+        self.graphics = Graphics(self.device_connected, window_size=(1500, 1000), pa=self) #setup class for drawing and graphics.
         #  - Pass along if a device is connected so that the graphics class knows if it needs to simulate the pantograph
         xc, yc = self.graphics.window.get_rect().center
         ##############################################
@@ -46,6 +46,11 @@ class PA:
         # variables for random rotations
         self.next_vibration_time = time.time() + np.random.uniform(0.1, 0.5)
         self.last_vibration_time = 0
+        
+        # variables for game mode selection
+        self.tumor_difficulty = None
+        self.use_haptics = None
+
 
         # variables for walls
         self.draw_walls_flag = False
@@ -54,7 +59,7 @@ class PA:
             ((524, 663), (479, 645)),
             ((479, 645), (580, 472)),
             ((580, 472), (650, 440)),
-            ((650, 440), (790, 465)),
+            ((650, 440), (781, 460)),
             #((790, 465), (810, 517)),
             ((850, 530), (942, 591)),
             ((942, 591), (998, 698)),
@@ -65,14 +70,17 @@ class PA:
             ((998, 698), (1070,1000)),]
 
         self.walls.extend([      
-            ((850, 530), (868, 498)),
+            ((850, 530), (900, 430)),
         ])
 
         self.walls.extend([                # brain tumor walls
-            ((790, 465), (694, 391)),
+            ((798, 445), (694, 391)),
             ((694, 391), (664, 301)),
             ((664, 301), (713, 291)),
-            ((713, 291), (836, 410)),
+            ((713, 291), (744, 357)),
+            ((744, 357), (830, 405)),
+            ((798, 445), (781, 460)),
+            ((830, 405), (900, 430)),
         ])
         self.generate_random_walls(0)
 
@@ -154,6 +162,104 @@ class PA:
         for wall in self.walls:
             p1, p2 = wall  # Unpack start and end points
             pygame.draw.line(self.graphics.window, wall_color, p1, p2, wall_thickness)
+            
+            
+    def show_start_menu(self):
+        g = self.graphics
+        font = pygame.font.Font('freesansbold.ttf', 48)
+        small_font = pygame.font.Font('freesansbold.ttf', 28)
+        
+        selected_difficulty = None
+        selected_mode = None
+    
+        # Button config
+        button_w, button_h = 220, 70
+        button_color = (57, 62, 70)            # dark gray buttons
+        hover_color = (80, 90, 100)            # lighter gray on hover
+        click_color = (144, 224, 239)          # unused but you could use it for click flashes
+        text_color = (238, 238, 238)           # light text
+        selected_border_color = (0, 173, 181)  # teal-cyan highlight
+    
+        def draw_button(rect, text, is_selected, is_hovered):
+            color = hover_color if is_hovered else button_color
+            pygame.draw.rect(g.window, color, rect, border_radius=15)
+            if is_selected:
+                pygame.draw.rect(g.window, selected_border_color, rect, 4, border_radius=15)
+            label = small_font.render(text, True, text_color)
+            label_rect = label.get_rect(center=rect.center)
+            g.window.blit(label, label_rect)
+    
+        while True:
+            g.window.fill((34, 40, 49))
+    
+            # Title
+            title = font.render("Choose Game Settings", True, (238, 238, 238))  # light text
+            g.window.blit(title, title.get_rect(center=(g.window_size[0]//2, 100)))
+    
+            # Button positions
+            center_x = g.window_size[0] // 2
+    
+            easy_rect   = pygame.Rect(center_x - 350, 200, button_w, button_h)
+            medium_rect = pygame.Rect(center_x - 110, 200, button_w, button_h)
+            hard_rect   = pygame.Rect(center_x + 130, 200, button_w, button_h)
+    
+            haptics_rect     = pygame.Rect(center_x - button_w - 20, 320, button_w, button_h)
+            no_haptics_rect  = pygame.Rect(center_x + 20, 320, button_w, button_h)
+
+    
+            mouse_pos = pygame.mouse.get_pos()
+            mouse_click = False
+    
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit(); sys.exit()
+                elif event.type == pygame.MOUSEBUTTONDOWN:
+                    mouse_click = True
+    
+            # Draw difficulty buttons
+            for rect, label in [
+                (easy_rect, "Easy"),
+                (medium_rect, "Medium"),
+                (hard_rect, "Hard")
+            ]:
+                hovered = rect.collidepoint(mouse_pos)
+                selected = (label.lower() == selected_difficulty)
+                draw_button(rect, label, selected, hovered)
+                if hovered and mouse_click:
+                    selected_difficulty = label.lower()
+    
+            # Draw mode buttons
+            for rect, label, mode_val in [
+                (haptics_rect, "With Haptics", True),
+                (no_haptics_rect, "No Haptics", False)
+            ]:
+                hovered = rect.collidepoint(mouse_pos)
+                selected = (mode_val == selected_mode)
+                draw_button(rect, label, selected, hovered)
+                if hovered and mouse_click:
+                    selected_mode = mode_val
+    
+            # Ready to continue
+            if selected_difficulty and selected_mode is not None:
+                start_w, start_h = 260, 80
+                continue_rect = pygame.Rect(center_x - start_w // 2, 520, start_w, start_h)
+                hovered = continue_rect.collidepoint(mouse_pos)
+                # Draw start button in bold green style
+                pygame.draw.rect(g.window, (40, 160, 100), continue_rect, border_radius=20)
+                if hovered:
+                    pygame.draw.rect(g.window, (60, 200, 130), continue_rect, border_radius=20)
+                label = small_font.render("Start", True, (255, 255, 255))  # light text
+                label_rect = label.get_rect(center=continue_rect.center)
+                g.window.blit(label, label_rect)
+                if hovered and mouse_click:
+                    self.tumor_difficulty = selected_difficulty
+                    self.use_haptics = selected_mode
+                    return
+    
+            pygame.display.flip()
+            g.clock.tick(60)
+
+
 
     
     def run(self):
@@ -217,12 +323,16 @@ class PA:
         # 4. Wall forces
         wall_force = self.compute_wall_force(xh)
         self.total_wall_force += wall_force[0]  # Accumulate total force for analysis
-        print(self.total_wall_force)
+        #print(self.total_wall_force)
 
 
         
         # Total force
-        fe = f_breath + self.twitch_force + wall_force
+        if self.use_haptics:
+            fe = f_breath + self.twitch_force + wall_force
+        else:
+            fe = f_breath + self.twitch_force
+
         """End of disturbance forces code"""
 
         
@@ -263,6 +373,8 @@ class PA:
 
 if __name__=="__main__":
     pa = PA()
+    pa.show_start_menu()
+    pa.graphics.set_tumor_location_from_difficulty()
     try:
         while True:
             pa.run()

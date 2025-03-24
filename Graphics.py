@@ -11,7 +11,9 @@ import time
 import random
 
 class Graphics:
-    def __init__(self,device_connected,window_size=(1080, 1200)):
+    def __init__(self,device_connected,window_size=(1080, 1200), pa=None):
+        self.pa = pa
+        
         self.device_connected = device_connected
         
         #initialize pygame window
@@ -65,11 +67,11 @@ class Graphics:
         
         
         self.tumor_positions = [
-            #(672, 456),
+            (672, 456),
             (1018, 990),
-
-        ]
-        self.tumor_location = random.choice(self.tumor_positions)
+            (700, 320)]
+        
+        
         
         # new background
         try:
@@ -134,7 +136,7 @@ class Graphics:
         #self.tumor_location = self.window.get_rect().center
         self.tumor_rect = pygame.Rect(*self.tumor_location, 0, 0).inflate(self.tumor_width, self.tumor_height)
 
-        self.tumor_image = pygame.image.load('brain-tumor2.png')
+        self.tumor_image = pygame.image.load('brain-tumor3.png')
         self.tumor_image = pygame.transform.scale(self.tumor_image, (self.tumor_width, self.tumor_height))
 
         self.window.blit(self.tumor_image, self.tumor_rect.topleft)
@@ -160,6 +162,14 @@ class Graphics:
             self.delivery_complete = True
             self.end_time = time.time()
 
+    def set_tumor_location_from_difficulty(self):
+        difficulty_map = {
+            "easy": 0,
+            "medium": 1,
+            "hard": 2
+        }
+        index = difficulty_map.get(self.pa.tumor_difficulty, 0)
+        self.tumor_location = self.tumor_positions[index]
 
 
 
@@ -338,7 +348,7 @@ class Graphics:
                 elapsed_time = 0
             
             # Show tumor at drop zone
-            tumor_image = pygame.image.load('brain-tumor2.png')
+            tumor_image = pygame.image.load('brain-tumor3.png')
             tumor_image = pygame.transform.scale(tumor_image, (self.tumor_width, self.tumor_height))
             tumor_rect = tumor_image.get_rect(center=self.delivery_zone.center)
             self.window.blit(tumor_image, tumor_rect)
