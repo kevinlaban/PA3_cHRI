@@ -4,6 +4,7 @@ import math
 import time
 import numpy as np
 import pygame
+import random
 
 from Physics import Physics
 from Graphics import Graphics
@@ -45,7 +46,87 @@ class PA:
         # variables for random rotations
         self.next_vibration_time = time.time() + np.random.uniform(0.1, 0.5)
         self.last_vibration_time = 0
+
+        # variables for walls
+        self.walls = []
+        self.generate_random_walls(3)
         ##############################################
+
+        # functions for walls
+
+    def point_to_segment_distance(self, point, seg_start, seg_end):
+        """Returns the closest point on a line segment to a given point and the distance."""
+        px, py = point
+        ax, ay = seg_start
+        bx, by = seg_end
+
+        # Vector AB and AP
+        AB = np.array([bx - ax, by - ay])
+        AP = np.array([px - ax, py - ay])
+
+        # Project AP onto AB (scalar projection)
+        AB_length_sq = np.dot(AB, AB)  # |AB|^2
+        if AB_length_sq == 0:
+            return seg_start, np.linalg.norm(AP)  # A and B are the same point
+
+        projection_factor = np.dot(AP, AB) / AB_length_sq
+        projection_factor = np.clip(projection_factor, 0, 1)  # Clamp between 0 and 1
+
+        # Closest point on segment
+        closest_x = ax + projection_factor * AB[0]
+        closest_y = ay + projection_factor * AB[1]
+
+        closest_point = (closest_x, closest_y)
+        distance = np.linalg.norm(np.array(point) - np.array(closest_point))
+
+        return closest_point, distance
+    
+    def compute_wall_force(self, xh):
+        """Computes the force pushing xh away from the closest wall."""
+        force = np.array([0.0, 0.0])  # Initialize force
+
+        threshold = 70  # Maximum distance for the force to be active
+
+        max_force = 10  # Maximum force strength
+
+        for wall in self.walls:
+            p1, p2 = wall  # Unpack wall segment
+            closest_point, distance = self.point_to_segment_distance(xh, p1, p2)
+
+            if distance < threshold:  # If within the force field
+                # Compute perpendicular direction (from wall to mouse)
+                direction = np.array(xh) - np.array(closest_point)
+                distance = max(distance, 1)  # Avoid division by zero
+                normalized_dir = direction / distance  # Normalize
+
+                # Force strength decreases with distance
+                force_magnitude = max_force * (1 - distance / threshold)  
+                force -= force_magnitude * normalized_dir  
+
+        return force
+    
+    def generate_random_walls(self, num_walls=5):
+        """Generates a list of random walls within the screen boundaries."""
+        screen_width, screen_height = self.graphics.window.get_size()
+        self.walls = []
+
+        for _ in range(num_walls):
+            x1, y1 = random.randint(50, screen_width - 50), random.randint(50, screen_height - 50)
+            x2, y2 = random.randint(50, screen_width - 50), random.randint(50, screen_height - 50)
+            
+            self.walls.append(((x1, y1), (x2, y2)))  # Store as (start, end) points
+
+        print(f"Generated {num_walls} random walls.")
+
+    def draw_walls(self):
+        """Draws all walls in the Pygame window."""
+        wall_color = (255, 255, 255)  # White walls
+        wall_thickness = 20  # Adjust thickness
+
+        for wall in self.walls:
+            p1, p2 = wall  # Unpack start and end points
+            pygame.draw.line(self.graphics.window, wall_color, p1, p2, wall_thickness)
+
     
     def run(self):
         p = self.physics #assign these to shorthand variables for easier use in this function
@@ -66,6 +147,11 @@ class PA:
         xh = np.array(xh) #make sure fe is a numpy array
         xc, yc = self.graphics.window.get_rect().center
         g.erase_screen()
+
+        # draw walls
+        self.draw_walls()
+
+
         ##############################################
         #ADD things here that run every frame at ~100fps!
                 
@@ -99,9 +185,12 @@ class PA:
             g.rotate_tool(np.random.uniform(-0.05, 0.05))
             self.next_vibration_time = now + np.random.uniform(0.2, 0.5)
 
+        # 4. Wall forces
+        wall_force = self.compute_wall_force(xh)
+
         
         # Total force
-        fe = f_breath + self.twitch_force
+        fe = f_breath + self.twitch_force + wall_force
         """End of disturbance forces code"""
 
         
