@@ -2,25 +2,25 @@
 
 import pygame
 import numpy as np
-#import math
+import math
 #import matplotlib.pyplot as plt
 #from HaplyHAPI import Board, Device, Mechanisms, Pantograph
 #import sys, serial, glob
 #from serial.tools import list_ports
 import time
+import random
 
 class Graphics:
-    def __init__(self,device_connected,window_size=(600,400)):
+    def __init__(self,device_connected,window_size=(1080, 1200)):
         self.device_connected = device_connected
         
         #initialize pygame window
         self.window_size = window_size #default (600,400)
         pygame.init()
-        self.window = pygame.display.set_mode((window_size[0]*2, window_size[1]))   ##twice 600x400 for haptic and VR
+        self.window = pygame.display.set_mode(self.window_size)
         pygame.display.set_caption('Virtual Haptic Device')
 
-        self.screenHaptics = pygame.Surface(self.window_size)
-        self.screenVR = pygame.Surface(self.window_size)
+        self.mainSurface = pygame.Surface(self.window_size)
 
         ##add nice icon from https://www.flaticon.com/authors/vectors-market
         self.icon = pygame.image.load('robot.png')
@@ -50,23 +50,157 @@ class Graphics:
         self.cOrange = (255,100,0)
         self.cYellow = (255,255,0)
         
-        self.hhandle = pygame.image.load('handle.png') #
+        self.hhandle = pygame.image.load('handle.png')
         
-        self.haptic_width = 48
-        self.haptic_height = 48
-        self.haptic  = pygame.Rect(*self.screenHaptics.get_rect().center, 0, 0).inflate(self.haptic_width, self.haptic_height)
-        self.effort_cursor  = pygame.Rect(*self.haptic.center, 0, 0).inflate(self.haptic_width, self.haptic_height) 
+        """ Modifications for PA3 """
+        
+        """Jasper Code"""
+        self.haptic_width = 64
+        self.haptic_height = 128
+        self.snake_mode = True
+        self.frame_count = 0
+        self.tumor_visible = True
+        """End of Jasper Code"""
+        
+        
+        self.tumor_positions = [
+            (672, 456),
+            (723, 460),
+            (783, 476),
+            (819, 507),
+            (884, 550),
+        ]
+        self.tumor_location = random.choice(self.tumor_positions)
+        
+        # new background
+        try:
+            self.background = pygame.image.load('sagital2.jpg')
+            self.background = pygame.transform.scale(self.background, self.window_size)
+        except:
+            print("Warning: background image not found.")
+            self.background = None
+            
+        self.nose_overlay = pygame.image.load('sagital_overlay.png').convert_alpha()  # keep alpha!
+        self.nose_overlay = pygame.transform.scale(self.nose_overlay, self.window_size)
+        
+        self.blood_overlay = pygame.image.load("blood_overlay.png").convert_alpha()
+        self.blood_overlay = pygame.transform.scale(self.blood_overlay, self.window_size)
+        self.blood_alpha = 0  # 0 = invisible
+
+        self.stick_angle = -0.7  # radians (0 = right)
+        
+        self.window_scale = 6000 #2500 #pixels per meter
+        self.device_origin = (self.window_size[0] // 2, self.window_size[1] // 3)
+        
+        self.delivery_zone = pygame.Rect(120, 770, 100, 100)  # x, y, width, height
+        
+        self.delivery_complete = False
+        
+        self.wall_collision = False
+        
+        self.start_time = time.time()
+        self.score = 100
+        
+        self.end_time = None
+        
+        self.last_penalty_time = time.time()
+        
+        self.hover_start_time = None
+        self.hover_duration_required = 5.0  # seconds
+        """ End of modifications for PA3 """
+        
+
+        self.haptic = pygame.Rect(*self.window.get_rect().center, 0, 0).inflate(self.haptic_width, self.haptic_height)
+        self.effort_cursor = pygame.Rect(*self.haptic.center, 0, 0).inflate(self.haptic_width, self.haptic_height)
         self.colorHaptic = self.cOrange ##color of the wall
 
         ####Pseudo-haptics dynamic parameters, k/b needs to be <1
         self.sim_k = 0.5 #0.1#0.5       ##Stiffness between cursor and haptic display
         self.sim_b = 0.8 #1.5#0.8       ##Viscous of the pseudohaptic display
         
-        self.window_scale = 3000 #2500 #pixels per meter
-        self.device_origin = (int(self.window_size[0]/2.0 + 0.038/2.0*self.window_scale),0)
         
         self.show_linkages = True
         self.show_debug = True
+        
+    def brain_tumor(self):
+        """ Draws the brain tumor unless it's removed by the gripper """
+        if not getattr(self, "tumor_visible", True): 
+            return  
+
+        self.tumor_width = 48
+        self.tumor_height = 48
+
+        #self.tumor_location = self.window.get_rect().center
+        self.tumor_rect = pygame.Rect(*self.tumor_location, 0, 0).inflate(self.tumor_width, self.tumor_height)
+
+        self.tumor_image = pygame.image.load('brain-tumor2.png')
+        self.tumor_image = pygame.transform.scale(self.tumor_image, (self.tumor_width, self.tumor_height))
+
+        self.window.blit(self.tumor_image, self.tumor_rect.topleft)
+
+        keys = pygame.key.get_pressed()
+        hovering = keys[pygame.K_SPACE] and self.haptic.colliderect(self.tumor_rect)
+    
+        if hovering:
+            if self.hover_start_time is None:
+                self.hover_start_time = time.time()
+            elapsed_hover = time.time() - self.hover_start_time
+            if elapsed_hover >= self.hover_duration_required:
+                self.snake_mode = False
+                self.tumor_visible = False
+                self.hover_start_time = None  # reset
+        else:
+            self.hover_start_time = None  # reset if not hovering
+            
+    
+    def check_delivery(self):
+        keys = pygame.key.get_pressed()
+        if not self.delivery_complete and not self.snake_mode and keys[pygame.K_SPACE] and self.delivery_zone.colliderect(self.haptic):
+            self.delivery_complete = True
+            self.end_time = time.time()
+
+
+
+
+    def snake_gripper(self):
+        """Snake like gripper animation and movement"""
+        "Dont forget to call this function in render loop"
+        self.haptic_width = 64
+        self.haptic_height = 128
+
+        if not hasattr(self, "snake_mode"):
+            self.snake_mode = True
+
+        if not hasattr(self, "frame_count"):
+            self.frame_count = 0
+        self.frame_count += 1
+
+        self.brain_tumor()
+        if (self.frame_count // 20 )% 2 == 0:
+            image_path = 'snake-gripper.png' if self.snake_mode else 'snake-gripper-brain-tumor.png'
+        else:
+            image_path = 'snake-gripper-mirrored.png' if self.snake_mode else 'snake-gripper-brain-tumor-mirrored.png'
+        self.snake_image = pygame.image.load(image_path)
+        
+        '''Allow rotation of the snake'''
+        scaled_img = pygame.transform.scale(self.snake_image, (self.haptic_width, self.haptic_height))
+        angle_deg = math.degrees(self.stick_angle)  # negative because pygame rotates CCW
+        rotated_img = pygame.transform.rotate(scaled_img, angle_deg)
+        rotated_rect = rotated_img.get_rect(center=self.haptic.center)
+        self.window.blit(rotated_img, rotated_rect.topleft)
+        
+        
+    def rotate_tool(self, delta_angle):
+        self.stick_angle += delta_angle
+
+    '''Dummy fucntion for wall collision'''
+    def check_wall_collision(self):
+        if self.haptic.centerx > 1000:
+            self.wall_collision = True
+        else:
+            self.wall_collision = False
+
+            
 
     def convert_pos(self,*positions):
         #invert x because of screen axes
@@ -156,59 +290,117 @@ class Graphics:
         return pE
 
     def erase_screen(self):
-        self.screenHaptics.fill(self.cWhite) #erase the haptics surface
-        self.screenVR.fill(self.cLightblue) #erase the VR surface
-        self.debug_text = ""
-    
-    def render(self,pA0,pB0,pA,pB,pE,f,pM):
-        ###################Render the Haptic Surface###################
-        #set new position of items indicating the endpoint location
-        self.haptic.center = pE #the hhandle image and effort square will also use this position for drawing
-        self.effort_cursor.center = self.haptic.center
+        if self.background:
+            self.window.blit(self.background, (0, 0))
+        else:
+            self.window.fill(self.cLightblue)
 
+
+    
+    def render(self, pA0, pB0, pA, pB, pE, f, pM):
+        self.haptic.center = pE
+        
+        """ Changes for PA3 """
+        if not self.delivery_complete:
+            self.brain_tumor()
+            self.check_delivery()
+            self.snake_gripper()
+            
+            
+            '''Check for collision and reduce score for colliding'''
+            self.check_wall_collision()
+            if self.wall_collision:
+                self.blood_alpha = 255
+                current_time = time.time()
+                if current_time - self.last_penalty_time >= 0.1:
+                    self.score = max(self.score - 1, 0)
+                    self.last_penalty_time = current_time
+
+                
+            elapsed_time = round(time.time() - self.start_time, 1)
+
+        else:
+            self.snake_mode = True
+            self.snake_gripper()
+            elapsed_time = round(self.end_time - self.start_time, 1)
+            
+            # Show tumor at drop zone
+            tumor_image = pygame.image.load('brain-tumor2.png')
+            tumor_image = pygame.transform.scale(tumor_image, (self.tumor_width, self.tumor_height))
+            tumor_rect = tumor_image.get_rect(center=self.delivery_zone.center)
+            self.window.blit(tumor_image, tumor_rect)
+
+        
+            # Final message background box
+            box_width = 800
+            box_height = 140
+            box_surface = pygame.Surface((box_width, box_height), pygame.SRCALPHA)
+            box_surface.fill((255, 255, 255, 220))  # White with alpha
+            
+            box_rect = box_surface.get_rect(center=(self.window_size[0] // 2, 120))
+            self.window.blit(box_surface, box_rect)
+            
+            # Text
+            big_font = pygame.font.Font('freesansbold.ttf', 48)
+            delivered_text = big_font.render("Tumor Successfully Removed!", True, (0, 200, 0))
+            text_rect = delivered_text.get_rect(center=(self.window_size[0]//2, 100))
+            self.window.blit(delivered_text, text_rect)
+            
+            time_score_text = self.font.render(f"Time: {elapsed_time}s     Final Score: {self.score}", True, (0, 0, 0))
+            score_rect = time_score_text.get_rect(center=(self.window_size[0]//2, 150))
+            self.window.blit(time_score_text, score_rect)
+
+        
+        # Pretty side-by-side time + score
+        info_text = self.font.render(f"Time: {elapsed_time}s     Score: {self.score}", True, (0, 0, 0))
+        info_bg = pygame.Surface((info_text.get_width() + 20, info_text.get_height() + 10))
+        info_bg.fill((255, 255, 255))
+        info_bg_rect = info_bg.get_rect(topleft=(20, 20))
+        self.window.blit(info_bg, info_bg_rect)
+        self.window.blit(info_text, (info_bg_rect.x + 10, info_bg_rect.y + 5))
+
+
+        
+        # Always draw delivery zone
+        pygame.draw.rect(self.window, (0, 255, 0), self.delivery_zone, 4)
+        zone_label = self.font.render("DROP ZONE", True, (0, 100, 0))
+        self.window.blit(zone_label, (self.delivery_zone.x, self.delivery_zone.y - 25))
+        
+        # draw nose overlay on top to hide device behind nose
+        self.window.blit(self.nose_overlay, (0, 0))  # this masks over the tool
+        
+        # Draw red damage overlay if needed
+        if self.blood_alpha > 0:
+            blood = self.blood_overlay.copy()
+            blood.set_alpha(self.blood_alpha)
+            self.window.blit(blood, (0, 0))
+            self.blood_alpha = max(self.blood_alpha - 10, 0)  # fade out slowly
+
+        """ End of changes """
+        
         if self.device_connected:
             self.effort_color = (255,255,255)
-
-        #pygame.draw.rect(self.screenHaptics, self.effort_color, self.haptic,border_radius=4)
-        pygame.draw.rect(self.screenHaptics, self.effort_color, self.effort_cursor,border_radius=8)
-
-        ######### Robot visualization ###################
+    
         if self.show_linkages:
             pantographColor = (150,150,150)
-            pygame.draw.lines(self.screenHaptics, pantographColor, False,[pA0,pA],15)
-            pygame.draw.lines(self.screenHaptics, pantographColor, False,[pB0,pB],15)
-            pygame.draw.lines(self.screenHaptics, pantographColor, False,[pA,pE],15)
-            pygame.draw.lines(self.screenHaptics, pantographColor, False,[pB,pE],15)
+            pygame.draw.lines(self.window, pantographColor, False, [pA0,pA],15)
+            pygame.draw.lines(self.window, pantographColor, False, [pB0,pB],15)
+            pygame.draw.lines(self.window, pantographColor, False, [pA,pE],15)
+            pygame.draw.lines(self.window, pantographColor, False, [pB,pE],15)
             
-            for p in ( pA0,pB0,pA,pB,pE):
-                pygame.draw.circle(self.screenHaptics, (0, 0, 0),p, 15)
-                pygame.draw.circle(self.screenHaptics, (200, 200, 200),p, 6)
-        
-        ### Hand visualisation
-        self.screenHaptics.blit(self.hhandle,self.effort_cursor)
-        
-        #pygame.draw.line(self.screenHaptics, (0, 0, 0), (self.haptic.center),(self.haptic.center+2*k*(xm-xh)))
-        
-        ###################Render the VR surface###################
-        pygame.draw.rect(self.screenVR, self.colorHaptic, self.haptic, border_radius=8)
-        
-        if not self.device_connected:
-            pygame.draw.lines(self.screenHaptics, (0,0,0), False,[self.effort_cursor.center,pM],2)
-        ##Fuse it back together
-        self.window.blit(self.screenHaptics, (0,0))
-        self.window.blit(self.screenVR, (600,0))
+            for p in (pA0,pB0,pA,pB,pE):
+                pygame.draw.circle(self.window, (0, 0, 0),p, 15)
+                pygame.draw.circle(self.window, (200, 200, 200),p, 6)
 
-        ##Print status in  overlay
+    
         if self.show_debug:    
-            self.debug_text += "FPS = " + str(round(self.clock.get_fps()))+" "
-            self.debug_text += "fe: "+str(np.round(f[0],1))+","+str(np.round(f[1],1))+"] "
-            self.debug_text += "xh: ["+str(np.round(pE[0],1))+","+str(np.round(pE[1],1))+"]"
-            self.text = self.font.render(self.debug_text, True, (0, 0, 0), (255, 255, 255))
+            debug_text = f"FPS = {round(self.clock.get_fps())} fe: [{np.round(f[0],1)},{np.round(f[1],1)}] xh: [{np.round(pE[0],1)},{np.round(pE[1],1)}]"
+            self.text = self.font.render(debug_text, True, (0, 0, 0), (255, 255, 255))
             self.window.blit(self.text, self.textRect)
-
-        pygame.display.flip()    
-        ##Slow down the loop to match FPS
+    
+        pygame.display.flip()
         self.clock.tick(self.FPS)
+
 
     def close(self):
         pygame.display.quit()

@@ -102,7 +102,9 @@ class PA:
     def compute_wall_force(self, xh):
         """Computes the force pushing xh away from the closest wall."""
         force = np.array([0.0, 0.0])  # Initialize force
+
         threshold = 70  # Maximum distance for the force to be active
+
         max_force = 10  # Maximum force strength
 
         for wall in self.walls:
