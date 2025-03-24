@@ -89,8 +89,8 @@ class Graphics:
 
         self.stick_angle = -0.7  # radians (0 = right)
         
-        self.window_scale = 6000 #2500 #pixels per meter
-        self.device_origin = (self.window_size[0] // 2, self.window_size[1] // 3)
+        self.window_scale = 9000 #6000 #2500 #pixels per meter
+        self.device_origin = (self.window_size[0] // 2, 0) #self.window_size[1] // 3)
         
         self.delivery_zone = pygame.Rect(120, 770, 100, 100)  # x, y, width, height
         
@@ -194,8 +194,8 @@ class Graphics:
         self.stick_angle += delta_angle
 
     '''Dummy fucntion for wall collision'''
-    def check_wall_collision(self):
-        if self.haptic.centerx > 1000:
+    def check_wall_collision(self, f):
+        if np.linalg.norm(f) > 5.0:
             self.wall_collision = True
         else:
             self.wall_collision = False
@@ -308,7 +308,7 @@ class Graphics:
             
             
             '''Check for collision and reduce score for colliding'''
-            self.check_wall_collision()
+            self.check_wall_collision(f)
             if self.wall_collision:
                 self.blood_alpha = 255
                 current_time = time.time()

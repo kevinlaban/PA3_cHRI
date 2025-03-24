@@ -30,7 +30,7 @@ from Graphics import Graphics
 
 class PA:
     def __init__(self):
-        self.physics = Physics(hardware_version=3) #setup physics class. Returns a boolean indicating if a device is connected
+        self.physics = Physics(hardware_version=2) #setup physics class. Returns a boolean indicating if a device is connected
         self.device_connected = self.physics.is_device_connected() #returns True if a connected haply device was found
         self.graphics = Graphics(self.device_connected, window_size=(1500, 1000)) #setup class for drawing and graphics.
         #  - Pass along if a device is connected so that the graphics class knows if it needs to simulate the pantograph
@@ -49,7 +49,22 @@ class PA:
 
         # variables for walls
         self.walls = []
-        self.generate_random_walls(3)
+        self.walls = [
+            ((524, 663), (479, 645)),
+            ((479, 645), (580, 472)),
+            ((580, 472), (650, 440)),
+            ((650, 440), (790, 465)),
+            ((790, 465), (810, 517)),
+            ((810, 517), (942, 591)),
+            ((942, 591), (998, 698)),
+            ((587, 655), (669, 625)),
+            ((669, 625), (903, 664)),
+            ((903, 664), (987, 702)),
+
+        ]  # Hardcoded walls
+        self.generate_random_walls(0)
+
+        self.total_wall_force = 0.0  
         ##############################################
 
         # functions for walls
@@ -85,7 +100,7 @@ class PA:
         """Computes the force pushing xh away from the closest wall."""
         force = np.array([0.0, 0.0])  # Initialize force
 
-        threshold = 70  # Maximum distance for the force to be active
+        threshold = 25  # Maximum distance for the force to be active
 
         max_force = 10  # Maximum force strength
 
@@ -100,7 +115,7 @@ class PA:
                 normalized_dir = direction / distance  # Normalize
 
                 # Force strength decreases with distance
-                force_magnitude = max_force * (1 - distance / threshold)  
+                force_magnitude = max_force * ((1 - distance / threshold)**3)  
                 force -= force_magnitude * normalized_dir  
 
         return force
@@ -108,7 +123,8 @@ class PA:
     def generate_random_walls(self, num_walls=5):
         """Generates a list of random walls within the screen boundaries."""
         screen_width, screen_height = self.graphics.window.get_size()
-        self.walls = []
+        print("screenwidth is", screen_width, "screenheight is", screen_height)
+        #self.walls = []
 
         for _ in range(num_walls):
             x1, y1 = random.randint(50, screen_width - 50), random.randint(50, screen_height - 50)
@@ -120,7 +136,7 @@ class PA:
 
     def draw_walls(self):
         """Draws all walls in the Pygame window."""
-        wall_color = (255, 255, 255)  # White walls
+        wall_color = (255, 0, 255)  # White walls
         wall_thickness = 20  # Adjust thickness
 
         for wall in self.walls:
@@ -187,6 +203,9 @@ class PA:
 
         # 4. Wall forces
         wall_force = self.compute_wall_force(xh)
+        self.total_wall_force += wall_force[0]  # Accumulate total force for analysis
+        print(self.total_wall_force)
+
 
         
         # Total force
