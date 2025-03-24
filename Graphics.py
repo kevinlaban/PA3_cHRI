@@ -56,7 +56,8 @@ class Graphics:
         
         """Jasper Code"""
         self.haptic_width = 64
-        self.haptic_height = 128
+        self.haptic_height = 64 #128
+
         self.snake_mode = True
         self.frame_count = 0
         self.tumor_visible = True
@@ -166,7 +167,7 @@ class Graphics:
         """Snake like gripper animation and movement"""
         "Dont forget to call this function in render loop"
         self.haptic_width = 64
-        self.haptic_height = 128
+        self.haptic_height = 64 #128
 
         if not hasattr(self, "snake_mode"):
             self.snake_mode = True

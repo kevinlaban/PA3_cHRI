@@ -48,23 +48,28 @@ class PA:
         self.last_vibration_time = 0
 
         # variables for walls
-        self.draw_walls_flag = True
+        self.draw_walls_flag = False
         self.walls = []
         self.walls = [
             ((524, 663), (479, 645)),
             ((479, 645), (580, 472)),
             ((580, 472), (650, 440)),
             ((650, 440), (790, 465)),
-            ((790, 465), (810, 517)),
-            ((810, 517), (942, 591)),
+            #((790, 465), (810, 517)),
+            ((850, 530), (942, 591)),
             ((942, 591), (998, 698)),
             ((587, 655), (669, 625)),
             ((669, 625), (903, 664)),
             ((903, 664), (950, 800)),
             ((950, 800), (982, 1000)),
-            ((998, 698), (1070,1000)),
+            ((998, 698), (1070,1000)),]
 
-        ]  # Hardcoded walls
+        self.walls.extend([                # brain tumor walls
+            ((790, 465), (694, 391)),
+            ((694, 391), (664, 301)),
+            ((664, 301), (713, 291)),
+            ((713, 291), (836, 410)),
+        ])
         self.generate_random_walls(0)
 
         self.total_wall_force = 0.0  
@@ -213,7 +218,7 @@ class PA:
 
         
         # Total force
-        fe = f_breath + self.twitch_force# + wall_force
+        fe = f_breath + self.twitch_force + wall_force
         """End of disturbance forces code"""
 
         
