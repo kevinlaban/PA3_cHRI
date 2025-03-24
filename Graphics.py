@@ -64,11 +64,9 @@ class Graphics:
         
         
         self.tumor_positions = [
-            (672, 456),
-            (723, 460),
-            (783, 476),
-            (819, 507),
-            (884, 550),
+            #(672, 456),
+            (1018, 990),
+
         ]
         self.tumor_location = random.choice(self.tumor_positions)
         
