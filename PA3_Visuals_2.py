@@ -64,6 +64,10 @@ class PA:
             ((950, 800), (982, 1000)),
             ((998, 698), (1070,1000)),]
 
+        self.walls.extend([      
+            ((850, 530), (868, 498)),
+        ])
+
         self.walls.extend([                # brain tumor walls
             ((790, 465), (694, 391)),
             ((694, 391), (664, 301)),
@@ -108,7 +112,7 @@ class PA:
         """Computes the force pushing xh away from the closest wall."""
         force = np.array([0.0, 0.0])  # Initialize force
 
-        threshold = 25  # Maximum distance for the force to be active
+        threshold = 30  # Maximum distance for the force to be active
 
         max_force = 10  # Maximum force strength
 
