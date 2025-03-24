@@ -48,6 +48,7 @@ class PA:
         self.last_vibration_time = 0
 
         # variables for walls
+        self.draw_walls_flag = True
         self.walls = []
         self.walls = [
             ((524, 663), (479, 645)),
@@ -167,7 +168,8 @@ class PA:
         g.erase_screen()
 
         # draw walls
-        self.draw_walls()
+        if self.draw_walls_flag == True:
+            self.draw_walls()
 
 
         ##############################################
@@ -192,7 +194,7 @@ class PA:
         if t > self.next_twitch_time:
             direction = np.random.randn(2)
             direction /= np.linalg.norm(direction)
-            self.twitch_force = direction * np.random.uniform(1.0, 5.0)
+            self.twitch_force = direction * np.random.uniform(2.0, 4.0)
             self.next_twitch_time = t + np.random.uniform(2.0, 4.0)
         else:
             self.twitch_force *= 0.8

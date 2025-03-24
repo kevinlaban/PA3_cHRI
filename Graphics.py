@@ -96,12 +96,14 @@ class Graphics:
         
         self.wall_collision = False
         
-        self.start_time = time.time()
+        self.start_time = time.time() 
+        self.start_time_flag = False
         self.score = 100
         
         self.end_time = None
         
         self.last_penalty_time = time.time()
+        
         
         self.hover_start_time = None
         self.hover_duration_required = 5.0  # seconds
@@ -297,12 +299,18 @@ class Graphics:
     
     def render(self, pA0, pB0, pA, pB, pE, f, pM, wall_force):
         self.haptic.center = pE
+        keys = pygame.key.get_pressed()
         
         """ Changes for PA3 """
         if not self.delivery_complete:
             self.brain_tumor()
             self.check_delivery()
             self.snake_gripper()
+
+            if self.start_time_flag == False:
+                if self.delivery_zone.colliderect(self.haptic) and keys[pygame.K_SPACE]:
+                    self.start_time_flag = True             
+                    self.start_time = time.time()
             
             
             '''Check for collision and reduce score for colliding'''
@@ -315,12 +323,18 @@ class Graphics:
                     self.last_penalty_time = current_time
 
                 
-            elapsed_time = round(time.time() - self.start_time, 1)
+            if self.start_time_flag == True:
+                elapsed_time = round(time.time() - self.start_time, 1)
+            else:
+                elapsed_time = 0
 
         else:
             self.snake_mode = True
             self.snake_gripper()
-            elapsed_time = round(self.end_time - self.start_time, 1)
+            if self.start_time_flag == True:
+                elapsed_time = round(self.end_time - self.start_time, 1)
+            else:
+                elapsed_time = 0
             
             # Show tumor at drop zone
             tumor_image = pygame.image.load('brain-tumor2.png')
