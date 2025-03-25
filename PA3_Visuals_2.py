@@ -85,6 +85,7 @@ class PA:
         self.generate_random_walls(0)
 
         self.total_wall_force = 0.0  
+        self.score = 0.0
         ##############################################
 
         # functions for walls
@@ -323,7 +324,7 @@ class PA:
         # 4. Wall forces
         wall_force = self.compute_wall_force(xh)
         self.total_wall_force += wall_force[0]  # Accumulate total force for analysis
-        #print(self.total_wall_force)
+        self.score += np.linalg.norm(wall_force) # Accumulate score based on force magnitude
 
 
         
@@ -333,7 +334,13 @@ class PA:
         else:
             fe = f_breath + self.twitch_force
 
+
+
         """End of disturbance forces code"""
+        # Display the score on the screen
+        font = pygame.font.Font('freesansbold.ttf', 24)  # Use a readable font size
+        score_text = font.render(f"Total damage: {int(self.score)}", True, (0, 5, 0))  # White text
+        g.window.blit(score_text, (500, 10))  # Display the score at the top-left corner
 
         
         for key in keyups:
