@@ -67,7 +67,7 @@ class Graphics:
         
         
         self.tumor_positions = [
-            (675, 430),
+            (675, 445),
             (1018, 990),
             (700, 320)]
         
@@ -90,8 +90,8 @@ class Graphics:
 
         self.stick_angle = -0.7  # radians (0 = right)
         
-        self.window_scale = 9000 #6000 #2500 #pixels per meter
-        self.device_origin = (self.window_size[0] // 2, 0) #self.window_size[1] // 3)
+        self.window_scale = 8000 #6000 #2500 #pixels per meter
+        self.device_origin = (self.window_size[0] // 2, -100) #self.window_size[1] // 3)
         
         self.delivery_zone = pygame.Rect(110, 770, 170, 80)  # x, y, width, height
         
@@ -165,6 +165,7 @@ class Graphics:
         if not self.delivery_complete and not self.snake_mode and keys[pygame.K_SPACE] and self.delivery_zone.colliderect(self.haptic):
             self.delivery_complete = True
             self.end_time = time.time()
+            #print(f"Total damage: {int(self.pa.score)}")
 
     def set_tumor_location_from_difficulty(self):
         difficulty_map = {
@@ -317,7 +318,7 @@ class Graphics:
         keys = pygame.key.get_pressed()
         
         """ Changes for PA3 """
-        self.window.blit(self.tray_image, self.delivery_zone.topleft)
+        self.window.blit(self.tray_image, (100, 780))
         
         if not self.delivery_complete:
             self.brain_tumor()
@@ -375,7 +376,10 @@ class Graphics:
             text_rect = delivered_text.get_rect(center=(self.window_size[0]//2, 100))
             self.window.blit(delivered_text, text_rect)
             
-            time_score_text = self.font.render(f"Time: {elapsed_time}s     Final Score: {self.score}", True, (0, 0, 0))
+            time_score_text = self.font.render(
+            f"Time: {elapsed_time}s     Total Damage: {int(self.pa.score)}     Final Score: {self.score}", 
+            True, (0, 0, 0)
+            )
             score_rect = time_score_text.get_rect(center=(self.window_size[0]//2, 150))
             self.window.blit(time_score_text, score_rect)
 

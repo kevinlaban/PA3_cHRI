@@ -53,7 +53,7 @@ class PA:
 
 
         # variables for walls
-        self.draw_walls_flag = True
+        self.draw_walls_flag = False
         self.walls = []
         self.walls = [
             ((524, 663), (479, 645)),
@@ -98,7 +98,13 @@ class PA:
             ((1050, 700), (80, 200)),
             ((660, 215), (80, 160))
         ]
-
+        
+        self.b_damper = 0.75
+        
+        # variables for velocity and acceletration calculations
+        self.prev_xh = None
+        self.dt = 0.01
+        self.prev_time = time.time()
         ##############################################
 
         # functions for walls
@@ -133,8 +139,8 @@ class PA:
     def compute_wall_force(self, xh):
         """Pulls user in the consistent direction of each wall's normal vector."""
         force = np.array([0.0, 0.0])
-        threshold = 10
-        max_force = 7
+        threshold = 30
+        max_force = 2.0
     
         for wall in self.walls:
             p1, p2 = np.array(wall[0]), np.array(wall[1])
@@ -343,7 +349,7 @@ class PA:
         t = time.time()
         
         # 1. Breathing (slow sinusoidal vertical motion)
-        f_breath = np.array([0.0, 0.2 * math.sin(2 * math.pi * 1.0 * t)])  # 1 Hz, 0.2 N
+        f_breath = np.array([0.75 * math.sin(2 * math.pi * 1.0 * t + 2), 0.75 * math.sin(2 * math.pi * 1.0 * t)])  # 1 Hz, 0.2 N
         
         # 2. Patient twitching (random impulses every few seconds)
         if not hasattr(self, 'last_twitch'):
@@ -399,21 +405,28 @@ class PA:
                 self.graphics.score = max(self.graphics.score - 1, 0)
                 self.graphics.last_penalty_time = current_time
 
-
+        
+        if self.prev_xh is not None:
+            v = ((self.prev_xh - xh) / self.dt)  / self.graphics.window_scale
+            v[1] = -v[1]
+        else:
+            v = np.array([0, 0])
+            
+        
         
         # Total force
         if self.use_haptics:
-            fe = f_breath + wall_force # + self.twitch_force 
+            fe = f_breath + wall_force + self.b_damper * v # + self.twitch_force 
         else:
-            fe = f_breath #+ self.twitch_force
+            fe = f_breath + self.b_damper * v #+ self.twitch_force
 
-
+        self.prev_xh = xh
 
         """End of disturbance forces code"""
         # Display the score on the screen
         font = pygame.font.Font('freesansbold.ttf', 24)  # Use a readable font size
         score_text = font.render(f"Total damage: {int(self.score)}", True, (0, 5, 0))  # White text
-        g.window.blit(score_text, (500, 10))  # Display the score at the top-left corner
+        #g.window.blit(score_text, (500, 10))  # Display the score at the top-left corner
 
         
         for key in keyups:
