@@ -132,28 +132,29 @@ class PA:
         return closest_point, distance
     
     def compute_wall_force(self, xh):
-        """Computes the force pushing xh away from the closest wall."""
-        force = np.array([0.0, 0.0])  # Initialize force
-
-        threshold = 25  # Maximum distance for the force to be active
-
-        max_force = 8  # Maximum force strength
-
+        """Pulls user in the consistent direction of each wall's normal vector."""
+        force = np.array([0.0, 0.0])
+        threshold = 30
+        max_force = 10
+    
         for wall in self.walls:
-            p1, p2 = wall  # Unpack wall segment
+            p1, p2 = np.array(wall[0]), np.array(wall[1])
             closest_point, distance = self.point_to_segment_distance(xh, p1, p2)
-
-            if distance < threshold:  # If within the force field
-                # Compute perpendicular direction (from wall to mouse)
-                direction = np.array(xh) - np.array(closest_point)
-                distance = max(distance, 1)  # Avoid division by zero
-                normalized_dir = direction / distance  # Normalize
-
-                # Force strength decreases with distance
-                force_magnitude = max_force * ((1 - distance / threshold)**2)  
-                force -= force_magnitude * normalized_dir  
-
+    
+            if distance < threshold:
+                # Define the wall direction vector
+                wall_vec = (-p2 + p1).astype(float)
+                wall_vec /= np.linalg.norm(wall_vec)
+    
+                # Normal vector (positive direction) — pick consistent direction
+                normal = np.array([-wall_vec[1], wall_vec[0]])  # 90° rotation
+    
+                # Apply force in that normal direction
+                force_magnitude = max_force * ((1 - distance / threshold) ** 3)
+                force += force_magnitude * normal  # Always in same direction
+    
         return force
+
     
     def generate_random_walls(self, num_walls=5):
         """Generates a list of random walls within the screen boundaries."""
@@ -170,13 +171,34 @@ class PA:
         print(f"Generated {num_walls} random walls.")
 
     def draw_walls(self):
-        """Draws all walls in the Pygame window."""
-        wall_color = (255, 0, 255)  # White walls
-        wall_thickness = 20  # Adjust thickness
-
+        wall_color = (255, 0, 255)
+        wall_thickness = 20
+        normal_color = (0, 255, 0)
+        normal_length = 40  # pixels
+    
         for wall in self.walls:
-            p1, p2 = wall  # Unpack start and end points
+            p1, p2 = np.array(wall[0]), np.array(wall[1])
             pygame.draw.line(self.graphics.window, wall_color, p1, p2, wall_thickness)
+    
+            # Wall direction and normal
+            wall_vec = (p2 - p1).astype(float)
+            wall_vec /= np.linalg.norm(wall_vec)
+            normal = np.array([-wall_vec[1], wall_vec[0]])  # consistent direction
+    
+            # Midpoint of the wall
+            mid = (p1 + p2) / 2
+    
+            # End of the normal arrow
+            end = mid + normal * normal_length
+    
+            # Draw the normal vector
+            pygame.draw.line(self.graphics.window, normal_color, mid, end, 3)
+    
+            # Optional: arrowhead
+            perp = np.array([-normal[1], normal[0]]) * 6  # small side offset
+            pygame.draw.line(self.graphics.window, normal_color, end, end - normal * 10 + perp, 2)
+            pygame.draw.line(self.graphics.window, normal_color, end, end - normal * 10 - perp, 2)
+
             
             
     def show_start_menu(self):
