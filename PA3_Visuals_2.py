@@ -30,7 +30,7 @@ from Graphics import Graphics
 
 class PA:
     def __init__(self):
-        self.physics = Physics(hardware_version=2) #setup physics class. Returns a boolean indicating if a device is connected
+        self.physics = Physics(hardware_version=3) #setup physics class. Returns a boolean indicating if a device is connected
         self.device_connected = self.physics.is_device_connected() #returns True if a connected haply device was found
         self.graphics = Graphics(self.device_connected, window_size=(1500, 1000), pa=self) #setup class for drawing and graphics.
         #  - Pass along if a device is connected so that the graphics class knows if it needs to simulate the pantograph
@@ -133,8 +133,8 @@ class PA:
     def compute_wall_force(self, xh):
         """Pulls user in the consistent direction of each wall's normal vector."""
         force = np.array([0.0, 0.0])
-        threshold = 30
-        max_force = 10
+        threshold = 10
+        max_force = 7
     
         for wall in self.walls:
             p1, p2 = np.array(wall[0]), np.array(wall[1])
@@ -149,7 +149,7 @@ class PA:
                 normal = np.array([-wall_vec[1], wall_vec[0]])  # 90° rotation
     
                 # Apply force in that normal direction
-                force_magnitude = max_force * ((1 - distance / threshold) ** 3)
+                force_magnitude = max_force * ((1 - distance / threshold) ** 1)
                 force += force_magnitude * normal  # Always in same direction
     
         return force
