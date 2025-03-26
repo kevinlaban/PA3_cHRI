@@ -86,6 +86,20 @@ class PA:
 
         self.total_wall_force = 0.0  
         self.score = 0.0
+        
+        self.damage_areas_visible = False
+        self.damage_zones_rectangle = [
+            pygame.Rect(615, 660, 300, 400),
+            pygame.Rect(590, 250, 80, 180),
+            pygame.Rect(1080, 630, 250, 400)
+        ]
+        self.damage_zones_ellipse = [
+            ((1075, 200), (780, 500)),
+            ((1150, 500), (560, 250)),
+            ((1050, 700), (80, 200)),
+            ((660, 215), (80, 160))
+        ]
+
         ##############################################
 
         # functions for walls
@@ -261,6 +275,16 @@ class PA:
             g.clock.tick(60)
 
 
+    def draw_damage_zones(self):
+        if not self.damage_areas_visible:
+            return
+        color = (255, 0, 0)  # Red
+        for rect in self.damage_zones_rectangle:
+            pygame.draw.rect(self.graphics.window, color, rect, 3)
+        for center, size in self.damage_zones_ellipse:
+            ellipse_rect = pygame.Rect(0, 0, *size)
+            ellipse_rect.center = center
+            pygame.draw.ellipse(self.graphics.window, color, ellipse_rect, 3)
 
     
     def run(self):
@@ -286,6 +310,8 @@ class PA:
         # draw walls
         if self.draw_walls_flag == True:
             self.draw_walls()
+            
+        self.draw_damage_zones()
 
 
         ##############################################
@@ -323,8 +349,34 @@ class PA:
 
         # 4. Wall forces
         wall_force = self.compute_wall_force(xh)
-        self.total_wall_force += wall_force[0]  # Accumulate total force for analysis
-        self.score += np.linalg.norm(wall_force) # Accumulate score based on force magnitude
+        if self.graphics.start_time_flag:
+            self.total_wall_force += wall_force[0]  # Accumulate total force for analysis
+            self.score += np.linalg.norm(wall_force) # Accumulate score based on force magnitude
+
+        
+        # Damage zones
+        in_zone = False
+        for rect in self.damage_zones_rectangle:
+            if rect.collidepoint(*xh):
+                in_zone = True
+                break
+        
+        for center, size in self.damage_zones_ellipse:
+            dx = (xh[0] - center[0]) / (size[0] / 2)
+            dy = (xh[1] - center[1]) / (size[1] / 2)
+            if dx**2 + dy**2 <= 1:
+                in_zone = True
+                break
+        
+        if self.graphics.start_time_flag and in_zone:
+            self.score += 3
+        
+            # Trigger blood overlay
+            self.graphics.blood_alpha = 255
+            current_time = time.time()
+            if current_time - self.graphics.last_penalty_time >= 0.1:
+                self.graphics.score = max(self.graphics.score - 1, 0)
+                self.graphics.last_penalty_time = current_time
 
 
         
@@ -353,9 +405,9 @@ class PA:
             if key == ord('d'): #Change the visibility of the debug text
                 g.show_debug = not g.show_debug
             if key == ord('f'):  # Rotate counter-clockwise
-                g.rotate_tool(-0.05)
+                g.rotate_tool(-0.25)
             if key == ord('g'):  # Rotate clockwise
-                g.rotate_tool(0.05)
+                g.rotate_tool(0.25)
 
             #you can add more if statements to handle additional key characters
             

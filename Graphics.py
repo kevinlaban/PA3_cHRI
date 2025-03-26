@@ -67,7 +67,7 @@ class Graphics:
         
         
         self.tumor_positions = [
-            (672, 456),
+            (675, 430),
             (1018, 990),
             (700, 320)]
         
@@ -93,7 +93,7 @@ class Graphics:
         self.window_scale = 9000 #6000 #2500 #pixels per meter
         self.device_origin = (self.window_size[0] // 2, 0) #self.window_size[1] // 3)
         
-        self.delivery_zone = pygame.Rect(120, 770, 100, 100)  # x, y, width, height
+        self.delivery_zone = pygame.Rect(110, 770, 170, 80)  # x, y, width, height
         
         self.delivery_complete = False
         
@@ -110,6 +110,10 @@ class Graphics:
         
         self.hover_start_time = None
         self.hover_duration_required = 5.0  # seconds
+        
+        self.show_delivery_zone_outline = True
+        self.tray_image = pygame.image.load("surgical_table.png").convert_alpha()
+        self.tray_image = pygame.transform.scale(self.tray_image, (180, 240))  # Match delivery zone size
         """ End of modifications for PA3 """
         
 
@@ -313,6 +317,8 @@ class Graphics:
         keys = pygame.key.get_pressed()
         
         """ Changes for PA3 """
+        self.window.blit(self.tray_image, self.delivery_zone.topleft)
+        
         if not self.delivery_complete:
             self.brain_tumor()
             self.check_delivery()
@@ -326,7 +332,7 @@ class Graphics:
             
             '''Check for collision and reduce score for colliding'''
             self.check_wall_collision(wall_force)
-            if self.wall_collision:
+            if self.start_time_flag and self.wall_collision:
                 self.blood_alpha = 255
                 current_time = time.time()
                 if current_time - self.last_penalty_time >= 0.1:
@@ -382,12 +388,13 @@ class Graphics:
         self.window.blit(info_bg, info_bg_rect)
         self.window.blit(info_text, (info_bg_rect.x + 10, info_bg_rect.y + 5))
 
-
         
-        # Always draw delivery zone
-        pygame.draw.rect(self.window, (0, 255, 0), self.delivery_zone, 4)
-        zone_label = self.font.render("DROP ZONE", True, (0, 100, 0))
-        self.window.blit(zone_label, (self.delivery_zone.x, self.delivery_zone.y - 25))
+        # Optional: keep showing the green rectangle for alignment
+        if self.show_delivery_zone_outline:
+            #pygame.draw.rect(self.window, (0, 255, 0), self.delivery_zone, 4)
+            zone_label = self.font.render("Surgical Table", True, (0, 100, 0))
+            self.window.blit(zone_label, (self.delivery_zone.x, self.delivery_zone.y - 25))
+
         
         # draw nose overlay on top to hide device behind nose
         self.window.blit(self.nose_overlay, (0, 0))  # this masks over the tool
