@@ -53,7 +53,7 @@ class PA:
 
 
         # variables for walls
-        self.draw_walls_flag = False
+        self.draw_walls_flag = True
         self.walls = []
         self.walls = [
             ((524, 663), (479, 645)),
@@ -135,9 +135,9 @@ class PA:
         """Computes the force pushing xh away from the closest wall."""
         force = np.array([0.0, 0.0])  # Initialize force
 
-        threshold = 30  # Maximum distance for the force to be active
+        threshold = 25  # Maximum distance for the force to be active
 
-        max_force = 10  # Maximum force strength
+        max_force = 8  # Maximum force strength
 
         for wall in self.walls:
             p1, p2 = wall  # Unpack wall segment
@@ -150,7 +150,7 @@ class PA:
                 normalized_dir = direction / distance  # Normalize
 
                 # Force strength decreases with distance
-                force_magnitude = max_force * ((1 - distance / threshold)**3)  
+                force_magnitude = max_force * ((1 - distance / threshold)**2)  
                 force -= force_magnitude * normalized_dir  
 
         return force
@@ -382,9 +382,9 @@ class PA:
         
         # Total force
         if self.use_haptics:
-            fe = f_breath + self.twitch_force + wall_force
+            fe = f_breath + wall_force # + self.twitch_force 
         else:
-            fe = f_breath + self.twitch_force
+            fe = f_breath #+ self.twitch_force
 
 
 
