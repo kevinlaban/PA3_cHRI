@@ -5,6 +5,7 @@ import time
 import numpy as np
 import pygame
 import random
+import csv
 
 from Physics import Physics
 from Graphics import Graphics
@@ -51,6 +52,11 @@ class PA:
         self.tumor_difficulty = None
         self.use_haptics = None
 
+        # Initialize logging
+        self.log_file = open("wall_forces_log.csv", mode="w", newline="")
+        self.csv_writer = csv.writer(self.log_file)
+        self.csv_writer.writerow(["time", "wall_force_x", "wall_force_y", "wall_force_magnitude"])  # Write header
+        self.logged_data = []  # Temporary storage for logged rows
 
         # variables for walls
         self.draw_walls_flag = False
@@ -72,14 +78,16 @@ class PA:
             ((900, 430), (850, 530)),
         ])
 
+        tumorthreshold = 10
+        tumormaxforce = 1
         self.walls.extend([                # brain tumor walls
-            ((798, 445), (694, 391)),
-            ((694, 391), (664, 301)),
-            ((664, 301), (713, 291)),
-            ((713, 291), (744, 357)),
-            ((744, 357), (830, 405)),
-            ((781, 460), (798, 445)),
-            ((830, 405), (900, 430)),
+            ((798, 445), (694, 391), tumorthreshold, tumormaxforce),
+            ((694, 391), (664, 301), tumorthreshold, tumormaxforce),
+            ((664, 301), (713, 291), tumorthreshold, tumormaxforce),
+            ((713, 291), (744, 357), tumorthreshold, tumormaxforce),
+            ((744, 357), (830, 405), tumorthreshold, tumormaxforce),
+            ((781, 460), (798, 445), tumorthreshold, tumormaxforce),
+            ((830, 405), (900, 430), tumorthreshold, tumormaxforce),
         ])
         self.generate_random_walls(0)
 
@@ -139,26 +147,31 @@ class PA:
     def compute_wall_force(self, xh):
         """Pulls user in the consistent direction of each wall's normal vector."""
         force = np.array([0.0, 0.0])
-        threshold = 30
-        max_force = 2.0
-    
+        default_threshold = 30  # Default threshold
+        default_max_force = 2.0
+
         for wall in self.walls:
+            # Unpack wall parameters with defaults
+            threshold = wall[2] if len(wall) > 2 else default_threshold
+            max_force = wall[3] if len(wall) > 3 else default_max_force
+
             p1, p2 = np.array(wall[0]), np.array(wall[1])
             closest_point, distance = self.point_to_segment_distance(xh, p1, p2)
-    
+
             if distance < threshold:
                 # Define the wall direction vector
                 wall_vec = (-p2 + p1).astype(float)
                 wall_vec /= np.linalg.norm(wall_vec)
-    
+
                 # Normal vector (positive direction) — pick consistent direction
                 normal = np.array([-wall_vec[1], wall_vec[0]])  # 90° rotation
-    
+
                 # Apply force in that normal direction
                 force_magnitude = max_force * ((1 - distance / threshold) ** 1)
                 force += force_magnitude * normal  # Always in same direction
-    
+
         return force
+
 
     
     def generate_random_walls(self, num_walls=5):
@@ -349,7 +362,7 @@ class PA:
         t = time.time()
         
         # 1. Breathing (slow sinusoidal vertical motion)
-        f_breath = np.array([0.75 * math.sin(2 * math.pi * 1.0 * t + 2), 0.75 * math.sin(2 * math.pi * 1.0 * t)])  # 1 Hz, 0.2 N
+        f_breath = np.array([0.85 * math.sin(2 * math.pi * 1.0 * t + 2), 0.85 * math.sin(2 * math.pi * 1.0 * t)])  # 1 Hz, 0.2 N
         
         # 2. Patient twitching (random impulses every few seconds)
         if not hasattr(self, 'last_twitch'):
@@ -379,6 +392,11 @@ class PA:
         if self.graphics.start_time_flag:
             self.total_wall_force += wall_force[0]  # Accumulate total force for analysis
             self.score += np.linalg.norm(wall_force) # Accumulate score based on force magnitude
+
+                    # Log the wall_force to the CSV file
+        current_time = time.time()
+        wall_force_magnitude = np.linalg.norm(wall_force)
+        self.logged_data.append([current_time, wall_force[0], wall_force[1], wall_force_magnitude])
 
         
         # Damage zones
@@ -459,6 +477,14 @@ class PA:
     def close(self):
         ##############################################
         #ADD things here that you want to run right before the program ends!
+           # Filter and write only valid rows to the CSV file
+        if self.graphics.start_time_flag:
+            start_time = self.graphics.start_time_flag
+            valid_data = [row for row in self.logged_data if row[0] >= start_time]
+            self.csv_writer.writerows(valid_data)
+
+        # Close the log file
+        self.log_file.close()
         
         ##############################################
         self.graphics.close()
